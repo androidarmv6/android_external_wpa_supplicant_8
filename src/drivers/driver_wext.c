@@ -44,6 +44,8 @@ static int wpa_driver_wext_set_auth_alg(void *priv, int auth_alg);
 #ifdef HAVE_PRIVATE_LIB
 extern int wpa_driver_wext_driver_cmd(void *priv, char *cmd, char *buf,
                                         size_t buf_len);
+extern int wpa_driver_wext_combo_scan(void *priv,
+                                        struct wpa_driver_scan_params *params);
 extern int wpa_driver_signal_poll(void *priv, struct wpa_signal_info *si);
 #endif
 
@@ -1031,6 +1033,11 @@ int wpa_driver_wext_scan(void *priv, struct wpa_driver_scan_params *params)
 	const u8 *ssid = params->ssids[0].ssid;
 	size_t ssid_len = params->ssids[0].ssid_len;
 
+        if (drv->capa.max_scan_ssids > 1) {
+                ret = wpa_driver_wext_combo_scan(priv, params);
+                goto scan_out;
+        }
+
 	if (ssid_len > IW_ESSID_MAX_SIZE) {
 		wpa_printf(MSG_DEBUG, "%s: too long SSID (%lu)",
 			   __FUNCTION__, (unsigned long) ssid_len);
@@ -1055,6 +1062,8 @@ int wpa_driver_wext_scan(void *priv, struct wpa_driver_scan_params *params)
 		perror("ioctl[SIOCSIWSCAN]");
 		ret = -1;
 	}
+
+scan_out:
 
 	/* Not all drivers generate "scan completed" wireless event, so try to
 	 * read results after a timeout. */
