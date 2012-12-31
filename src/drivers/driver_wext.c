@@ -41,13 +41,46 @@ static int wpa_driver_wext_finish_drv_init(struct wpa_driver_wext_data *drv);
 static void wpa_driver_wext_disconnect(struct wpa_driver_wext_data *drv);
 static int wpa_driver_wext_set_auth_alg(void *priv, int auth_alg);
 
-#if defined(HAVE_PRIVATE_LIB) && defined(CONFIG_DRIVER_WEXT)
+#if defined(HAVE_PRIVATE_LIB) || defined(IRREGULAR_WIFI_STRENGTH)
 extern int wpa_driver_wext_driver_cmd(void *priv, char *cmd, char *buf,
                                         size_t buf_len);
 extern int wpa_driver_wext_combo_scan(void *priv,
                                         struct wpa_driver_scan_params *params);
+#if defined(HAVE_PRIVATE_LIB)
 extern int wpa_driver_signal_poll(void *priv, struct wpa_signal_info *si);
-#endif
+#else
+static int wpa_driver_signal_poll(void *priv, struct wpa_signal_info *si)
+{
+#define RSSI_CMD			"RSSI"
+#define LINKSPEED_CMD			"LINKSPEED"
+	char buf[MAX_DRV_CMD_SIZE];
+	struct wpa_driver_wext_data *drv = priv;
+	char *prssi;
+	int res;
+
+	os_memset(si, 0, sizeof(*si));
+	res = wpa_driver_wext_driver_cmd(priv, RSSI_CMD, buf, sizeof(buf));
+	/* Answer: SSID rssi -Val */
+	if (res < 0)
+		return res;
+	prssi = strcasestr(buf, RSSI_CMD);
+	if (!prssi)
+		return -1;
+	si->current_signal = atoi(prssi + strlen(RSSI_CMD) + 1);
+
+	res = wpa_driver_wext_driver_cmd(priv, "LINKSPEED", buf, sizeof(buf));
+	/* Answer: LinkSpeed Val */
+	if (res < 0)
+		return res;
+	si->current_txrate = atoi(buf + strlen(LINKSPEED_CMD) + 1) * 1000;
+
+	return 0;
+}
+#endif // #if defined(HAVE_PRIVATE_LIB)
+
+#endif // #if defined(HAVE_PRIVATE_LIB) || defined(IRREGULAR_WIFI_STRENGTH)
+
+
 
 int wpa_driver_wext_set_auth_param(struct wpa_driver_wext_data *drv,
 				   int idx, u32 value)

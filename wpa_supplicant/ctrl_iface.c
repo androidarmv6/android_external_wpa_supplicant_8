@@ -4331,26 +4331,6 @@ static int wpa_supplicant_ctrl_iface_autoscan(struct wpa_supplicant *wpa_s,
 #endif /* CONFIG_AUTOSCAN */
 
 
-static int wpa_supplicant_signal_poll(struct wpa_supplicant *wpa_s, char *buf,
-				      size_t buflen)
-{
-	struct wpa_signal_info si;
-	int ret;
-
-	ret = wpa_drv_signal_poll(wpa_s, &si);
-	if (ret)
-		return -1;
-
-	ret = os_snprintf(buf, buflen, "RSSI=%d\nLINKSPEED=%d\n"
-			  "NOISE=%d\nFREQUENCY=%u\n",
-			  si.current_signal, si.current_txrate / 1000,
-			  si.current_noise, si.frequency);
-	if (ret < 0 || (unsigned int) ret > buflen)
-		return -1;
-	return ret;
-}
-
-
 static int wpa_supplicant_pktcnt_poll(struct wpa_supplicant *wpa_s, char *buf,
 				      size_t buflen)
 {
@@ -4380,8 +4360,27 @@ static int wpa_supplicant_driver_cmd(struct wpa_supplicant *wpa_s, char *cmd,
 		ret = sprintf(buf, "%s\n", "OK");
 	return ret;
 }
+
 #endif
 
+static int wpa_supplicant_signal_poll(struct wpa_supplicant *wpa_s, char *buf,
+				      size_t buflen)
+{
+	struct wpa_signal_info si;
+	int ret;
+
+	ret = wpa_drv_signal_poll(wpa_s, &si);
+	if (ret)
+		return -1;
+
+	ret = os_snprintf(buf, buflen, "RSSI=%d\nLINKSPEED=%d\n"
+			  "NOISE=%d\nFREQUENCY=%u\n",
+			  si.current_signal, si.current_txrate / 1000,
+			  si.current_noise, si.frequency);
+	if (ret < 0 || (unsigned int) ret > buflen)
+		return -1;
+	return ret;
+}
 
 char * wpa_supplicant_ctrl_iface_process(struct wpa_supplicant *wpa_s,
 					 char *buf, size_t *resp_len)
