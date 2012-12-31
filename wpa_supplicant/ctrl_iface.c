@@ -4334,6 +4334,23 @@ static int wpa_supplicant_ctrl_iface_autoscan(struct wpa_supplicant *wpa_s,
 static int wpa_supplicant_signal_poll(struct wpa_supplicant *wpa_s, char *buf,
 				      size_t buflen)
 {
+#ifdef IRREGULAR_WIFI_STRENGTH
+	int ret;
+	int lssize=20;
+	int rssisize=16;
+	char linkspeed[lssize];
+	char rssi[rssisize];
+
+	wpa_supplicant_driver_cmd(wpa_s, "LINKSPEED", linkspeed, lssize);
+	wpa_supplicant_driver_cmd(wpa_s, "RSSI", rssi, rssisize);
+
+	ret = os_snprintf(buf, buflen, "RSSI=%s\nLINKSPEED=%s\n"
+		"NOISE=0\nFREQUENCY=0\n",
+		strcasestr(rssi,"rssi")+5,linkspeed+10);
+	if (ret < 0 || (unsigned int) ret > buflen)
+		return -1;
+	return ret;
+#else
 	struct wpa_signal_info si;
 	int ret;
 
@@ -4348,8 +4365,8 @@ static int wpa_supplicant_signal_poll(struct wpa_supplicant *wpa_s, char *buf,
 	if (ret < 0 || (unsigned int) ret > buflen)
 		return -1;
 	return ret;
+#endif
 }
-
 
 static int wpa_supplicant_pktcnt_poll(struct wpa_supplicant *wpa_s, char *buf,
 				      size_t buflen)
@@ -4370,6 +4387,7 @@ static int wpa_supplicant_pktcnt_poll(struct wpa_supplicant *wpa_s, char *buf,
 
 
 #ifdef ANDROID
+
 static int wpa_supplicant_driver_cmd(struct wpa_supplicant *wpa_s, char *cmd,
 				     char *buf, size_t buflen)
 {
@@ -4380,6 +4398,7 @@ static int wpa_supplicant_driver_cmd(struct wpa_supplicant *wpa_s, char *cmd,
 		ret = sprintf(buf, "%s\n", "OK");
 	return ret;
 }
+
 #endif
 
 
