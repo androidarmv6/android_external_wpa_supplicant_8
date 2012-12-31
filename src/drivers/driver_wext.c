@@ -41,7 +41,7 @@ static int wpa_driver_wext_finish_drv_init(struct wpa_driver_wext_data *drv);
 static void wpa_driver_wext_disconnect(struct wpa_driver_wext_data *drv);
 static int wpa_driver_wext_set_auth_alg(void *priv, int auth_alg);
 
-#if defined(HAVE_PRIVATE_LIB) && defined(CONFIG_DRIVER_WEXT)
+#ifdef ANDROID
 extern int wpa_driver_wext_driver_cmd(void *priv, char *cmd, char *buf,
                                         size_t buf_len);
 extern int wpa_driver_wext_combo_scan(void *priv,
@@ -2518,9 +2518,7 @@ const struct wpa_driver_ops wpa_driver_wext_ops = {
 #ifdef ANDROID
 	.sched_scan = wext_sched_scan,
 	.stop_sched_scan = wext_stop_sched_scan,
-#if defined(HAVE_PRIVATE_LIB) && defined(CONFIG_DRIVER_WEXT)
         .signal_poll = wpa_driver_signal_poll,
         .driver_cmd = wpa_driver_wext_driver_cmd,
-#endif
 #endif /* ANDROID */
 };
