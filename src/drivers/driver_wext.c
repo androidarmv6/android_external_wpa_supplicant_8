@@ -41,13 +41,82 @@ static int wpa_driver_wext_finish_drv_init(struct wpa_driver_wext_data *drv);
 static void wpa_driver_wext_disconnect(struct wpa_driver_wext_data *drv);
 static int wpa_driver_wext_set_auth_alg(void *priv, int auth_alg);
 
-#if defined(HAVE_PRIVATE_LIB) && defined(CONFIG_DRIVER_WEXT)
-extern int wpa_driver_wext_driver_cmd(void *priv, char *cmd, char *buf,
-                                        size_t buf_len);
-extern int wpa_driver_wext_combo_scan(void *priv,
-                                        struct wpa_driver_scan_params *params);
+#if defined(HAVE_PRIVATE_LIB)
+extern int wpa_driver_wext_combo_scan(void *priv, struct wpa_driver_scan_params *params);
+extern int wpa_driver_wext_driver_cmd(void *priv, char *cmd, char *buf, size_t buf_len);
 extern int wpa_driver_signal_poll(void *priv, struct wpa_signal_info *si);
-#endif
+#endif //defined(HAVE_PRIVATE_LIB)
+
+#if defined(IRREGULAR_WIFI_STRENGTH)
+#define RSSI_CMD			"RSSI"
+#define LINKSPEED_CMD			"LINKSPEED"
+#define WEXT_NUMBER_SEQUENTIAL_ERRORS	4
+static int wpa_driver_wext_driver_cmd(void *priv, char *cmd, char *buf, size_t buf_len)
+{
+	int ret = 0;
+
+	wpa_printf(MSG_DEBUG, "%s %s len = %d", __func__, cmd, buf_len);
+
+        if ((os_strcasecmp(cmd, RSSI_CMD) == 0) || (os_strcasecmp(cmd, LINKSPEED_CMD) == 0))
+        {
+		struct wpa_driver_wext_data *drv = priv;
+		struct wpa_supplicant *wpa_s = (struct wpa_supplicant *)(drv->ctx);
+		struct iwreq iwr;
+
+		os_memset(&iwr, 0, sizeof(iwr));
+		os_strncpy(iwr.ifr_name, drv->ifname, IFNAMSIZ);
+		os_memcpy(buf, cmd, strlen(cmd) + 1);
+		iwr.u.data.pointer = buf;
+		iwr.u.data.length = buf_len;
+
+		ret = ioctl(drv->ioctl_sock, SIOCSIWPRIV, &iwr);
+
+		if (ret < 0) {
+			wpa_printf(MSG_ERROR, "%s failed (%d): %s", __func__, ret, cmd);
+			drv->errors++;
+			if (drv->errors > WEXT_NUMBER_SEQUENTIAL_ERRORS) {
+				drv->errors = 0;
+				wpa_msg(drv->ctx, MSG_INFO, WPA_EVENT_DRIVER_STATE "HANGED");
+			}
+		} else {
+			drv->errors = 0;
+			ret = strlen(buf);
+		}
+
+		wpa_printf(MSG_DEBUG, "%s %s len = %d, %d", __func__, buf, ret, strlen(buf));
+	}
+
+	return ret;
+}
+
+static int wpa_driver_signal_poll(void *priv, struct wpa_signal_info *si)
+{
+
+	char buf[MAX_DRV_CMD_SIZE];
+	struct wpa_driver_wext_data *drv = priv;
+	char *prssi;
+	int res;
+
+	os_memset(si, 0, sizeof(*si));
+	res = wpa_driver_wext_driver_cmd(priv, RSSI_CMD, buf, sizeof(buf));
+	/* Answer: SSID rssi -Val */
+	if (res < 0)
+		return res;
+	prssi = strcasestr(buf, RSSI_CMD);
+	if (!prssi)
+		return -1;
+	si->current_signal = atoi(prssi + strlen(RSSI_CMD) + 1);
+
+	res = wpa_driver_wext_driver_cmd(priv, "LINKSPEED", buf, sizeof(buf));
+	/* Answer: LinkSpeed Val */
+	if (res < 0)
+		return res;
+	si->current_txrate = atoi(buf + strlen(LINKSPEED_CMD) + 1) * 1000;
+
+	return 0;
+}
+#endif // defined(IRREGULAR_WIFI_STRENGTH)
+
 
 int wpa_driver_wext_set_auth_param(struct wpa_driver_wext_data *drv,
 				   int idx, u32 value)
@@ -1033,7 +1102,7 @@ int wpa_driver_wext_scan(void *priv, struct wpa_driver_scan_params *params)
 	const u8 *ssid = params->ssids[0].ssid;
 	size_t ssid_len = params->ssids[0].ssid_len;
 
-#if defined(HAVE_PRIVATE_LIB) && defined(CONFIG_DRIVER_WEXT)
+#if defined(HAVE_PRIVATE_LIB)
         if (drv->capa.max_scan_ssids > 1) {
                 ret = wpa_driver_wext_combo_scan(priv, params);
                 goto scan_out;
@@ -1064,7 +1133,7 @@ int wpa_driver_wext_scan(void *priv, struct wpa_driver_scan_params *params)
 		perror("ioctl[SIOCSIWSCAN]");
 		ret = -1;
 	}
-#if defined(HAVE_PRIVATE_LIB) && defined(CONFIG_DRIVER_WEXT)
+#if defined(HAVE_PRIVATE_LIB)
 scan_out:
 #endif
 	/* Not all drivers generate "scan completed" wireless event, so try to
@@ -2518,7 +2587,7 @@ const struct wpa_driver_ops wpa_driver_wext_ops = {
 #ifdef ANDROID
 	.sched_scan = wext_sched_scan,
 	.stop_sched_scan = wext_stop_sched_scan,
-#if defined(HAVE_PRIVATE_LIB) && defined(CONFIG_DRIVER_WEXT)
+#if defined(HAVE_PRIVATE_LIB) || defined(IRREGULAR_WIFI_STRENGTH)
         .signal_poll = wpa_driver_signal_poll,
         .driver_cmd = wpa_driver_wext_driver_cmd,
 #endif
