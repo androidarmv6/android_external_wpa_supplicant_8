@@ -33,6 +33,10 @@ ifeq ($(BOARD_WLAN_DEVICE), bcmdhd)
 L_CFLAGS += -DANDROID_P2P
 endif
 
+ifeq ($(BOARD_HAS_IRREGULAR_WIFI_STRENGTH), true)
+L_CFLAGS += -DIRREGULAR_WIFI_STRENGTH
+endif
+
 ifeq ($(BOARD_WLAN_DEVICE), qcwcn)
 L_CFLAGS += -DANDROID_QCOM_WCN
 L_CFLAGS += -DANDROID_P2P
@@ -49,6 +53,10 @@ L_CFLAGS += -DCONFIG_CTRL_IFACE_DIR=\"/data/system/wpa_supplicant\"
 # To force sizeof(enum) = 4
 ifeq ($(TARGET_ARCH),arm)
 L_CFLAGS += -mabi=aapcs-linux
+endif
+
+ifeq ($(BOARD_WEXT_NO_COMBO_SCAN),true)
+L_CFLAGS += -DWEXT_NO_COMBO_SCAN
 endif
 
 # To allow non-ASCII characters in SSID
@@ -1517,7 +1525,6 @@ LOCAL_STATIC_LIBRARIES := libCustomWifi
 endif
 ifneq ($(BOARD_WPA_SUPPLICANT_PRIVATE_LIB),)
 LOCAL_STATIC_LIBRARIES += $(BOARD_WPA_SUPPLICANT_PRIVATE_LIB)
-L_CFLAGS += -DHAVE_PRIVATE_LIB
 endif
 LOCAL_SHARED_LIBRARIES := libc libcutils
 ifeq ($(CONFIG_TLS), openssl)
