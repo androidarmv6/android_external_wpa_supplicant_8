@@ -29,27 +29,24 @@
 #include "linux_ioctl.h"
 #include "rfkill.h"
 #include "driver.h"
-#include "driver_wext.h"
+#include "driver_bcm4325.h"
 
 #ifdef ANDROID
 #include "android_drv.h"
 #endif /* ANDROID */
 //test
-static int wpa_driver_wext_flush_pmkid(void *priv);
-static int wpa_driver_wext_get_range(void *priv);
-static int wpa_driver_wext_finish_drv_init(struct wpa_driver_wext_data *drv);
-static void wpa_driver_wext_disconnect(struct wpa_driver_wext_data *drv);
-static int wpa_driver_wext_set_auth_alg(void *priv, int auth_alg);
+static int wpa_driver_bcm4325_flush_pmkid(void *priv);
+static int wpa_driver_bcm4325_get_range(void *priv);
+static int wpa_driver_bcm4325_finish_drv_init(struct wpa_driver_wext_data *drv);
+static void wpa_driver_bcm4325_disconnect(struct wpa_driver_wext_data *drv);
+static int wpa_driver_bcm4325_set_auth_alg(void *priv, int auth_alg);
 
-#if defined(HAVE_PRIVATE_LIB) && defined(CONFIG_DRIVER_WEXT)
-extern int wpa_driver_wext_driver_cmd(void *priv, char *cmd, char *buf,
-                                        size_t buf_len);
-extern int wpa_driver_wext_combo_scan(void *priv,
-                                        struct wpa_driver_scan_params *params);
-extern int wpa_driver_signal_poll(void *priv, struct wpa_signal_info *si);
-#endif
+int wpa_driver_signal_poll(void *priv, struct wpa_signal_info *si)
+{
+	//define it here
+}
 
-int wpa_driver_wext_set_auth_param(struct wpa_driver_wext_data *drv,
+int wpa_driver_bcm4325_set_auth_param(struct wpa_driver_bcm4325_data *drv,
 				   int idx, u32 value)
 {
 	struct iwreq iwr;
@@ -79,9 +76,9 @@ int wpa_driver_wext_set_auth_param(struct wpa_driver_wext_data *drv,
  * @bssid: Buffer for BSSID
  * Returns: 0 on success, -1 on failure
  */
-int wpa_driver_wext_get_bssid(void *priv, u8 *bssid)
+int wpa_driver_bcm4325_get_bssid(void *priv, u8 *bssid)
 {
-	struct wpa_driver_wext_data *drv = priv;
+	struct wpa_driver_bcm4325_data *drv = priv;
 	struct iwreq iwr;
 	int ret = 0;
 
@@ -104,9 +101,9 @@ int wpa_driver_wext_get_bssid(void *priv, u8 *bssid)
  * @bssid: BSSID
  * Returns: 0 on success, -1 on failure
  */
-int wpa_driver_wext_set_bssid(void *priv, const u8 *bssid)
+int wpa_driver_bcm4325_set_bssid(void *priv, const u8 *bssid)
 {
-	struct wpa_driver_wext_data *drv = priv;
+	struct wpa_driver_bcm4325_data *drv = priv;
 	struct iwreq iwr;
 	int ret = 0;
 
@@ -133,9 +130,9 @@ int wpa_driver_wext_set_bssid(void *priv, const u8 *bssid)
  * @ssid: Buffer for the SSID; must be at least 32 bytes long
  * Returns: SSID length on success, -1 on failure
  */
-int wpa_driver_wext_get_ssid(void *priv, u8 *ssid)
+int wpa_driver_bcm4325_get_ssid(void *priv, u8 *ssid)
 {
-	struct wpa_driver_wext_data *drv = priv;
+	struct wpa_driver_bcm4325_data *drv = priv;
 	struct iwreq iwr;
 	int ret = 0;
 
@@ -171,9 +168,9 @@ int wpa_driver_wext_get_ssid(void *priv, u8 *ssid)
  * @ssid_len: Length of SSID (0..32)
  * Returns: 0 on success, -1 on failure
  */
-int wpa_driver_wext_set_ssid(void *priv, const u8 *ssid, size_t ssid_len)
+int wpa_driver_bcm4325_set_ssid(void *priv, const u8 *ssid, size_t ssid_len)
 {
-	struct wpa_driver_wext_data *drv = priv;
+	struct wpa_driver_bcm4325_data *drv = priv;
 	struct iwreq iwr;
 	int ret = 0;
 	char buf[33];
@@ -217,9 +214,9 @@ int wpa_driver_wext_set_ssid(void *priv, const u8 *ssid, size_t ssid_len)
  * @freq: Frequency in MHz
  * Returns: 0 on success, -1 on failure
  */
-int wpa_driver_wext_set_freq(void *priv, int freq)
+int wpa_driver_bcm4325_set_freq(void *priv, int freq)
 {
-	struct wpa_driver_wext_data *drv = priv;
+	struct wpa_driver_bcm4325_data *drv = priv;
 	struct iwreq iwr;
 	int ret = 0;
 
@@ -238,7 +235,7 @@ int wpa_driver_wext_set_freq(void *priv, int freq)
 
 
 static void
-wpa_driver_wext_event_wireless_custom(void *ctx, char *custom)
+wpa_driver_bcm4325_event_wireless_custom(void *ctx, char *custom)
 {
 	union wpa_event_data data;
 
@@ -318,7 +315,7 @@ wpa_driver_wext_event_wireless_custom(void *ctx, char *custom)
 }
 
 
-static int wpa_driver_wext_event_wireless_michaelmicfailure(
+static int wpa_driver_bcm4325_event_wireless_michaelmicfailure(
 	void *ctx, const char *ev, size_t len)
 {
 	const struct iw_michaelmicfailure *mic;
@@ -341,8 +338,8 @@ static int wpa_driver_wext_event_wireless_michaelmicfailure(
 }
 
 
-static int wpa_driver_wext_event_wireless_pmkidcand(
-	struct wpa_driver_wext_data *drv, const char *ev, size_t len)
+static int wpa_driver_bcm4325_event_wireless_pmkidcand(
+	struct wpa_driver_bcm4325_data *drv, const char *ev, size_t len)
 {
 	const struct iw_pmkid_cand *cand;
 	union wpa_event_data data;
@@ -368,8 +365,8 @@ static int wpa_driver_wext_event_wireless_pmkidcand(
 }
 
 
-static int wpa_driver_wext_event_wireless_assocreqie(
-	struct wpa_driver_wext_data *drv, const char *ev, int len)
+static int wpa_driver_bcm4325_event_wireless_assocreqie(
+	struct wpa_driver_bcm4325_data *drv, const char *ev, int len)
 {
 	if (len < 0)
 		return -1;
@@ -389,8 +386,8 @@ static int wpa_driver_wext_event_wireless_assocreqie(
 }
 
 
-static int wpa_driver_wext_event_wireless_assocrespie(
-	struct wpa_driver_wext_data *drv, const char *ev, int len)
+static int wpa_driver_bcm4325_event_wireless_assocrespie(
+	struct wpa_driver_bcm4325_data *drv, const char *ev, int len)
 {
 	if (len < 0)
 		return -1;
@@ -410,7 +407,7 @@ static int wpa_driver_wext_event_wireless_assocrespie(
 }
 
 
-static void wpa_driver_wext_event_assoc_ies(struct wpa_driver_wext_data *drv)
+static void wpa_driver_bcm4325_event_assoc_ies(struct wpa_driver_bcm4325_data *drv)
 {
 	union wpa_event_data data;
 
@@ -436,7 +433,7 @@ static void wpa_driver_wext_event_assoc_ies(struct wpa_driver_wext_data *drv)
 }
 
 
-static void wpa_driver_wext_event_wireless(struct wpa_driver_wext_data *drv,
+static void wpa_driver_bcm4325_event_wireless(struct wpa_driver_bcm4325_data *drv,
 					   char *data, int len)
 {
 	struct iw_event iwe_buf, *iwe = &iwe_buf;
@@ -489,7 +486,7 @@ static void wpa_driver_wext_event_wireless(struct wpa_driver_wext_data *drv,
 						     NULL);
 			
 			} else {
-				wpa_driver_wext_event_assoc_ies(drv);
+				wpa_driver_bcm4325_event_assoc_ies(drv);
 				wpa_supplicant_event(drv->ctx, EVENT_ASSOC,
 						     NULL);
 			}
@@ -500,7 +497,7 @@ static void wpa_driver_wext_event_wireless(struct wpa_driver_wext_data *drv,
 					   "IWEVMICHAELMICFAILURE length");
 				return;
 			}
-			wpa_driver_wext_event_wireless_michaelmicfailure(
+			wpa_driver_bcm4325_event_wireless_michaelmicfailure(
 				drv->ctx, custom, iwe->u.data.length);
 			break;
 		case IWEVCUSTOM:
@@ -2518,9 +2515,6 @@ const struct wpa_driver_ops wpa_driver_wext_ops = {
 #ifdef ANDROID
 	.sched_scan = wext_sched_scan,
 	.stop_sched_scan = wext_stop_sched_scan,
-#if defined(HAVE_PRIVATE_LIB) && defined(CONFIG_DRIVER_WEXT)
         .signal_poll = wpa_driver_signal_poll,
-        .driver_cmd = wpa_driver_wext_driver_cmd,
-#endif
 #endif /* ANDROID */
 };

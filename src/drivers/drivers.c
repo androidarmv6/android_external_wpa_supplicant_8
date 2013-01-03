@@ -12,6 +12,9 @@
 #ifdef CONFIG_DRIVER_WEXT
 extern struct wpa_driver_ops wpa_driver_wext_ops; /* driver_wext.c */
 #endif /* CONFIG_DRIVER_WEXT */
+#ifdef CONFIG_DRIVER_BCM4325
+extern struct wpa_driver_ops wpa_driver_bcm4325_ops; /* driver_bcm4325.c */
+#endif /* CONFIG_DRIVER_BCM4325 */
 #ifdef CONFIG_DRIVER_NL80211
 extern struct wpa_driver_ops wpa_driver_nl80211_ops; /* driver_nl80211.c */
 #endif /* CONFIG_DRIVER_NL80211 */
@@ -47,6 +50,9 @@ extern struct wpa_driver_ops wpa_driver_none_ops; /* driver_none.c */
 
 struct wpa_driver_ops *wpa_drivers[] =
 {
+#ifdef CONFIG_DRIVER_BCM4325
+        &wpa_driver_bcm4325_ops,
+#endif /* CONFIG_DRIVER_WEXT */
 #ifdef CONFIG_DRIVER_WEXT
 	&wpa_driver_wext_ops,
 #endif /* CONFIG_DRIVER_WEXT */
